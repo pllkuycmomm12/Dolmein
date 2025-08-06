@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>موقع تعدين LTCMiner وهمي</title>
+  <style>
+    body {
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      background: #121212;
+      color: #eee;
+      margin: 0; padding: 0;
+      display: flex; justify-content: center; align-items: center;
+      height: 100vh;
+      flex-direction: column;
+    }
+    .container {
+      background: #1e1e1e;
+      padding: 20px;
+      border-radius: 10px;
+      width: 320px;
+      box-shadow: 0 0 15px #0ff;
+    }
+    h2 {
+      text-align: center;
+      margin-bottom: 15px;
+      color: #0ff;
+    }
+    input[type=text], input[type=password] {
+      width: 100%;
+      padding: 10px;
+      margin: 8px 0 15px 0;
+      border: none;
+      border-radius: 5px;
+      background: #333;
+      color: #eee;
+      font-size: 16px;
+    }
+    button {
+      width: 100%;
+      padding: 12px;
+      border: none;
+      border-radius: 5px;
+      background: #0ff;
+      color: #121212;
+      font-weight: bold;
+      cursor: pointer;
+      font-size: 16px;
+      margin-bottom: 10px;
+      transition: background 0.3s ease;
+    }
+    button:hover {
+      background: #09c;
+    }
+    .hidden {
+      display: none;
+    }
+    .balance {
+      font-size: 20px;
+      margin-bottom: 15px;
+      text-align: center;
+      color: #0f0;
+    }
+    .message {
+      background: #222;
+      padding: 10px;
+      border-radius: 5px;
+      margin-bottom: 15px;
+      color: #ffa500;
+      text-align: center;
+    }
+    .links {
+      text-align: center;
+      margin-top: 10px;
+    }
+    .links a {
+      color: #0ff;
+      cursor: pointer;
+      text-decoration: none;
+      font-size: 14px;
+    }
+    .links a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container" id="login-container">
+  <h2>تسجيل الدخول / إنشاء حساب</h2>
+  <input type="text" id="username" placeholder="اسم المستخدم" />
+  <input type="password" id="password" placeholder="كلمة المرور" />
+  <button id="loginBtn">دخول</button>
+  <div class="links">
+    <a id="showRegister">إنشاء حساب جديد</a>
+  </div>
+</div>
+
+<div class="container hidden" id="register-container">
+  <h2>إنشاء حساب جديد</h2>
+  <input type="text" id="regUsername" placeholder="اسم المستخدم" />
+  <input type="password" id="regPassword" placeholder="كلمة المرور" />
+  <button id="registerBtn">تسجيل</button>
+  <div class="links">
+    <a id="showLogin">العودة لتسجيل الدخول</a>
+  </div>
+</div>
+
+<div class="container hidden" id="dashboard">
+  <h2>لوحة التحكم</h2>
+  <div class="balance">الرصيد: <span id="balance">0.000000 LTC</span></div>
+  <button id="startMining">بدء التعدين</button>
+  <button id="stopMining" class="hidden">إيقاف التعدين</button>
+  <button id="withdraw">سحب الأرباح</button>
+  <button id="upgrade">ترقية الحساب</button>
+  <div class="message" id="messageBox"></div>
+  <button id="logout">تسجيل خروج</button>
+</div>
+
+<script>
+  // بيانات المستخدم مخزنة في localStorage
+  // شكل البيانات: {username: {password: "...", balance: number, mining: boolean}}
+
+  const loginContainer = document.getElementById('login-container');
+  const registerContainer = document.getElementById('register-container');
+  const dashboard = document.getElementById('dashboard');
+  const messageBox = document.getElementById('messageBox');
+  const balanceSpan = document.getElementById('balance');
+  const startMiningBtn = document.getElementById('startMining');
+  const stopMiningBtn = document.getElementById('stopMining');
+  const withdrawBtn = document.getElementById('withdraw');
+  const upgradeBtn = document.getElementById('upgrade');
+  const logoutBtn = document.getElementById('logout');
+
+  let currentUser = null;
+  let miningInterval = null;
+
+  // دوال مساعدة
+  function showMessage(msg, color = '#ffa500') {
+    messageBox.style.color = color;
+    messageBox.textContent = msg;
+  }
+
+  function updateBalance() {
+    if (!currentUser) return;
+    const users = JSON.parse(localStorage.getItem('users')) || {};
+    let balance = users[currentUser].balance || 0;
+    balanceSpan.textContent = balance.toFixed(6) + ' LTC';
+  }
+
+  // تسجيل الدخول
+  document.getElementById('loginBtn').addEventListener('click', () => {
+    const username = document.getElementById('username').value.trim();
+    const password = document.getElementById('password').value.trim();
+    const users = JSON.parse(localStorage.getItem('users')) || {};
+    if (!username || !password) {
+      showMessage('رجاءً املأ جميع الحقول', 'red');
+      return;
+    }
+    if (!users[username]) {
+      showMessage('المستخدم غير موجود', 'red');
+      return;
+    }
+    if (users[username].password !== password) {
+      showMessage('كلمة المرور خاطئة', 'red');
+      return;
+    }
+    currentUser = username;
+    showDashboard();
+  });
+
+  // إظهار لوحة التحكم
+  function showDashboard() {
+    loginContainer.classList.add('hidden');
+    registerContainer.classList.add('hidden');
+    dashboard.classList.remove('hidden');
+    messageBox.textContent = '';
+    updateBalance();
+  }
+
+  // تسجيل جديد
+  document.getElementById('registerBtn').addEventListener('click', () => {
+    const username = document.getElementById('regUsername').value.trim();
+    const password = document.getElementById('regPassword').value.trim();
+    if (!username || !password) {
+      showMessage('رجاءً املأ جميع الحقول', 'red');
+      return;
+    }
+    let users = JSON.parse(localStorage.getItem('users')) || {};
+    if (users[username]) {
+      showMessage('اسم المستخدم موجود بالفعل', 'red');
+      return;
+    }
+    users[username] = { password: password, balance: 0, mining: false };
+    localStorage.setItem('users', JSON.stringify(users));
+    showMessage('تم إنشاء الحساب بنجاح! يمكنك تسجيل الدخول الآن.', 'green');
+  });
+
+  // عرض تسجيل جديد / تسجيل دخول
+  document.getElementById('showRegister').addEventListener('click', () => {
+    loginContainer.classList.add('hidden');
+    registerContainer.classList.remove('hidden');
+    messageBox.textContent = '';
+  });
+  document.getElementById('showLogin').addEventListener('click', () => {
+    registerContainer.classList.add('hidden');
+    loginContainer.classList.remove('hidden');
+    messageBox.textContent = '';
+  });
+
+  // بدء التعدين (زيادة الرصيد كل ثانية)
+  startMiningBtn.addEventListener('click', () => {
+    if (!currentUser) return;
+    showMessage('بدأ التعدين... رجاءً انتظر.', 'green');
+    startMiningBtn.classList.add('hidden');
+    stopMiningBtn.classList.remove('hidden');
+    let users = JSON.parse(localStorage.getItem('users'));
+    users[currentUser].mining = true;
+    localStorage.setItem('users', JSON.stringify(users));
+
+    miningInterval = setInterval(() => {
+      let users = JSON.parse(localStorage.getItem('users'));
+      if (!users[currentUser].mining) {
+        clearInterval(miningInterval);
+        startMiningBtn.classList.remove('hidden');
+        stopMiningBtn.classList.add('hidden');
+        return;
+      }
+      users[currentUser].balance += 0.00001; // زيادة وهمية
+      localStorage.setItem('users', JSON.stringify(users));
+      updateBalance();
+    }, 1000);
+  });
+
+  // إيقاف التعدين
+  stopMiningBtn.addEventListener('click', () => {
+    if (!currentUser) return;
+    let users = JSON.parse(localStorage.getItem('users'));
+    users[currentUser].mining = false;
+    localStorage.setItem('users', JSON.stringify(users));
+    clearInterval(miningInterval);
+    showMessage('تم إيقاف التعدين.', 'orange');
+    startMiningBtn.classList.remove('hidden');
+    stopMiningBtn.classList.add('hidden');
+  });
+
+  // سحب الأرباح (رسالة وهمية فقط)
+  withdrawBtn.addEventListener('click', () => {
+    if (!currentUser) return;
+    let users = JSON.parse(localStorage.getItem('users'));
+    if (users[currentUser].balance < 0.001) {
+      showMessage('الرصيد قليل جداً للسحب. الحد الأدنى 0.001 LTC', 'red');
+      return;
+    }
+    showMessage('تم إرسال طلب السحب. سيتم معالجته خلال 24 ساعة.', 'green');
+    // تصفير الرصيد بعد السحب (وهمي)
+    users[currentUser].balance = 0;
+    localStorage.setItem('users', JSON.stringify(users));
+    updateBalance();
+  });
+
+  // ترقية الحساب (رسالة وهمية)
+  upgradeBtn.addEventListener('click', () => {
+    showMessage('لترقية الحساب، الرجاء الدفع 20 دولار عبر بايبال أو كريبتو.', 'orange');
+  });
+
+  // تسجيل خروج
+  logoutBtn.addEventListener('click', () => {
+    currentUser = null;
+    clearInterval(miningInterval);
+    miningInterval = null;
+    dashboard.classList.add('hidden');
+    loginContainer.classList.remove('hidden');
+    messageBox.textContent = '';
+    startMiningBtn.classList.remove('hidden');
+    stopMiningBtn.classList.add('hidden');
+  });
+</script>
+
+</body>
+</html>
